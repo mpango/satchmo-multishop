@@ -1,0 +1,15 @@
+#3    Only superusers shall see the "site" field in the admin. The value a
+      user sets there is already overwritten for non-superusers, but they can
+      still see that field, which will likely lead to confusion.
+
+#4    Only superusers may set and change the site setting of a user.
+
+#7    How to handle registration.RegistrationProfile? Do we have to overwrite
+      the manager here? The docs say, it provides "a mechanism for
+      automatically creating an instance of a site-specific profile
+      model". What exactly does that "site-specific profile" mean for us?
+      Also, find out if the satchmo admin for it uses an admin.ModelAdmin
+      subclass or simply the default (which we currently only use).
+
+#10   
+

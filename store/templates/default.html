@@ -1,0 +1,19 @@
+{% extends "shop/base.html" %}
+{% load i18n %}
+{% load thumbnail %}
+{% load satchmo_util %}
+{% load satchmo_category %}
+{% load cms_tags %}
+
+{% block extra-head %}
+	<title>{{ shop_name }} - {% page_attribute title %}</title>
+{% endblock %}
+
+{% block navbar %}
+   <li class="first"><a href="/">{% trans "Home" %}</a></li> <li>{% page_attribute title %}</li>
+{% endblock %}
+
+
+{% block content %}
+<div id="cms">{% placeholder content %}</div>
+{% endblock %}

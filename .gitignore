@@ -1,0 +1,7 @@
+*.pyc
+*.pyo
+*.py~
+local_settings.py
+.DS_Store
+satchmo.log
+settings.py
