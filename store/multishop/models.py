@@ -12,6 +12,82 @@ from satchmo_store.contact.models import ContactInteractionType, \
                                          ContactOrganization, Organization
 from django.utils.translation import get_language, ugettext, ugettext_lazy as _
 from rulez import registry
+import datetime
+
+
+SATCHMO_PRODUCT=True
+
+def get_product_types():
+	"""
+	Returns a tuple of all product subtypes this app adds
+	"""
+	return ('MultishopProduct', )
+
+class MultishopProduct(Product):
+	parent_product = models.ForeignKey(Product, related_name='child_product')
+	
+	def save(self, force_insert=False, force_update=False):
+		self.name = self.parent_product.name
+		self.slug = self.parent_product.slug
+		self.sku = self.parent_product.sku
+		self.short_description = self.parent_product.short_description
+		self.description = self.parent_product.description
+		self.active = self.parent_product.active
+		self.featured = self.parent_product.featured
+		self.ordering = self.parent_product.ordering
+		self.weight = self.parent_product.weight
+		self.weight_units = self.parent_product.weight_units
+		self.length = self.parent_product.length
+		self.length_units = self.parent_product.length_units
+		self.width = self.parent_product.width
+		self.width_units = self.parent_product.width_units 
+		self.height = self.parent_product.height
+		self.height_units = self.parent_product.height_units
+		self.total_sold = self.parent_product.total_sold
+		self.taxable = self.parent_product.taxable
+		self.taxClass = self.parent_product.taxClass
+		self.date_added = datetime.date.today()
+		super(MultishopProduct, self).save(force_insert=force_insert, force_update=force_update)
+	
+	
+	def _get_subtype(self):
+		"""
+		Has to return the name of the product subtype
+		"""
+		return 'MultishopProduct'
+	
+	def __unicode__(self):
+		return u"MultishopProduct: %s" % self.parent_product.name
+	
+	class Meta:
+		verbose_name = _('Multishop Product')
+		verbose_name_plural = _('Multishop Products')
+	
+
+
+class MultishopCategory(Category):
+	parent_category = models.ForeignKey(Category, related_name='child_category')
+	
+	def save(self, force_insert=False, force_update=False):
+		self.name = self.parent_category.name
+		self.slug = self.parent_category.slug
+		self.meta = self.parent_category.meta
+		self.description = self.parent_category.description
+		self.ordering = self.parent_category.ordering
+		self.is_active = self.parent_category.is_active
+		self.date_added = datetime.date.today()
+		super(MultishopCategory, self).save(force_insert=force_insert, force_update=force_update)
+	
+	def _get_subtype(self):
+		return 'Multishop'
+	
+	def __unicode__(self):
+		return u"Multishop Category: %s" % self.name
+	
+	class Meta:
+		verbose_name = _('Multishop Category')
+		verbose_name_plural = _('Multishop Categories')
+	
 
 
 def user_can_edit(self, user_obj):
@@ -25,7 +101,6 @@ def user_can_edit(self, user_obj):
 	return False
 Product.add_to_class('can_edit', user_can_edit)
 registry.register('can_edit', Product)
-
 
 
 class UserProfile(models.Model):

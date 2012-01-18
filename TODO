@@ -11,5 +11,5 @@
       Also, find out if the satchmo admin for it uses an admin.ModelAdmin
       subclass or simply the default (which we currently only use).
 
-#10   
+#10   Add per-site-skins: https://bitbucket.org/bkroeze/django-site-skins
 

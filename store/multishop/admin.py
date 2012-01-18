@@ -3,7 +3,7 @@ from django.forms import ValidationError
 from django.contrib import admin
 from django.contrib.comments       import Comment
 from django.contrib.comments.admin import CommentsAdmin
-from multishop.models import UserProfile
+from multishop.models import UserProfile, MultishopProduct, MultishopCategory
 from product.models import Product, Category, AttributeOption, OptionGroup, \
                            Option, Discount, TaxClass
 from product.admin  import ProductOptions, CategoryOptions, \
@@ -48,6 +48,38 @@ from satchmo_store.shop.admin  import OrderOptions, OrderItemOptions, \
 # Register the UserProfile so we can manage it in the admin panel as well.
 # 
 admin.site.register(UserProfile)
+
+#
+# Register our custom MultishopProduct
+#
+class MultishopProductAdmin(admin.ModelAdmin):
+	list_display = ('parent_product', 'site', 'slug', )
+	list_filter = ['site', ]
+	search_fields = ['slug', 'sku', 'name', ]
+	
+	fieldsets = (
+		('Product', {
+			'fields': ('parent_product', 'site', 'category', )
+		}),
+	)
+
+admin.site.register(MultishopProduct, MultishopProductAdmin)
+
+#
+# Register our custom MultishopCategory
+#
+class MultishopCategoryAdmin(admin.ModelAdmin):
+	list_display = ('parent_category', 'site', 'slug', )
+	list_filter = ['site', ]
+	search_fields = ['slug', 'name', ]
+	
+	fieldsets = (
+		('Category', {
+			'fields': ('parent_category', 'site', 'parent', )
+		}),
+	)
+
+admin.site.register(MultishopCategory, MultishopCategoryAdmin)
 
 class MultishopLimitedFieldMixin(object):
 	"""
