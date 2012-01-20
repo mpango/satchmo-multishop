@@ -52,18 +52,19 @@ admin.site.register(UserProfile)
 #
 # Register our custom MultishopProduct
 #
-class MultishopProductAdmin(admin.ModelAdmin):
-	list_display = ('parent_product', 'site', 'slug', )
-	list_filter = ['site', ]
-	search_fields = ['slug', 'sku', 'name', ]
-	
-	fieldsets = (
-		('Product', {
-			'fields': ('parent_product', 'site', 'category', )
-		}),
-	)
-
-admin.site.register(MultishopProduct, MultishopProductAdmin)
+# class MultishopProductAdmin(admin.ModelAdmin):
+# 	list_display = ('product', 'site', 'slug', )
+# 	list_filter = ['site', ]
+# 	search_fields = ['slug', 'sku', 'name', ]
+# 	
+# 	fieldsets = (
+# 		('Product', {
+# 			'fields': ('product', 'site', 'category', )
+# 		}),
+# 	)
+# 
+# admin.site.register(MultishopProduct, MultishopProductAdmin)
+admin.site.register(MultishopProduct)
 
 #
 # Register our custom MultishopCategory

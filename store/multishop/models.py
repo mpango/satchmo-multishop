@@ -15,7 +15,7 @@ from rulez import registry
 import datetime
 
 
-SATCHMO_PRODUCT=True
+SATCHMO_PRODUCT = True
 
 def get_product_types():
 	"""
@@ -23,33 +23,19 @@ def get_product_types():
 	"""
 	return ('MultishopProduct', )
 
-class MultishopProduct(Product):
-	parent_product = models.ForeignKey(Product, related_name='child_product')
+
+class MultishopProduct(models.Model):
+	product = models.OneToOneField(Product, verbose_name=_('Product'), primary_key=True)
+	virtual_sites = models.ManyToManyField(Site, blank=True, verbose_name=_("Virtual Sites"))
+	# site = models.ForeignKey(Site, verbose_name=_('Site'))
+	# category = models.ManyToManyField(Category, blank=True, verbose_name=_("Category"))
+	# name = models.CharField(_("Full Name"), max_length=255, blank=False, help_text=_("This is what the product will be called in the default site language.  To add non-default translations, use the Product Translation section below."))
+	# slug = models.SlugField(_("Slug Name"), blank=True, help_text=_("Used for URLs, auto-generated from name if blank"), max_length=255)
+	# sku = models.CharField(_("SKU"), max_length=255, blank=True, null=True, help_text=_("Defaults to slug if left blank"))
 	
-	def save(self, force_insert=False, force_update=False):
-		self.name = self.parent_product.name
-		self.slug = self.parent_product.slug
-		self.sku = self.parent_product.sku
-		self.short_description = self.parent_product.short_description
-		self.description = self.parent_product.description
-		self.active = self.parent_product.active
-		self.featured = self.parent_product.featured
-		self.ordering = self.parent_product.ordering
-		self.weight = self.parent_product.weight
-		self.weight_units = self.parent_product.weight_units
-		self.length = self.parent_product.length
-		self.length_units = self.parent_product.length_units
-		self.width = self.parent_product.width
-		self.width_units = self.parent_product.width_units 
-		self.height = self.parent_product.height
-		self.height_units = self.parent_product.height_units
-		self.total_sold = self.parent_product.total_sold
-		self.taxable = self.parent_product.taxable
-		self.taxClass = self.parent_product.taxClass
-		self.date_added = datetime.date.today()
-		super(MultishopProduct, self).save(force_insert=force_insert, force_update=force_update)
-	
-	
+	def __init__(self, *args, **kwargs):
+		super(MultishopProduct, self).__init__(*args, **kwargs)
+
 	def _get_subtype(self):
 		"""
 		Has to return the name of the product subtype
@@ -57,7 +43,13 @@ class MultishopProduct(Product):
 		return 'MultishopProduct'
 	
 	def __unicode__(self):
-		return u"MultishopProduct: %s" % self.parent_product.name
+		return u"MultishopProduct: %s" % self.product.name
+	
+	# def save(self, force_insert=False, force_update=False):
+	# 	self.name = self.product.name
+	# 	self.slug = self.product.slug
+	# 	self.sku  = self.product.sku
+	# 	super(MultishopProduct, self).save(force_insert=force_insert, force_update=force_update)
 	
 	class Meta:
 		verbose_name = _('Multishop Product')

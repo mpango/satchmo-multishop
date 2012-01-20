@@ -1,0 +1,9 @@
+#navigation {
+  float: left;
+  padding: 1em;
+  width: 20em;
+}
+
+#content {
+  margin-left: 22em;
+}

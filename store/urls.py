@@ -9,4 +9,5 @@ admin.autodiscover()
 urlpatterns += patterns('',
     url(r'^admin/', include(admin.site.urls)),
     url(r'cms/', include('cms.urls')),
+    url(r'^multishop/', include('multishop.urls')),
 )
