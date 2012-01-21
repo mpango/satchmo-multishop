@@ -1,9 +1,17 @@
-#navigation {
+#navigation-shop {
+  float: left;
+  padding: 1em;
+  width: 20em;
+}
+
+#navigation-categories {
   float: left;
   padding: 1em;
   width: 20em;
 }
 
 #content {
-  margin-left: 22em;
+  float: left;
+  padding: 1em;
+  width: 40em;
 }

@@ -34,13 +34,13 @@
 			{% block sidebar %}
 			<h3>{% trans "Shop Categories" %}</h3>
 			{% block sidebar-categories %}
-			<div id="menu_container">
-                {% if category.id %}
+			<div id="menu_container" style="background-color:#333; color:#fff">
+                {% if category.id %}id
                     {% category_tree category.id %}
-                {% else %}
-                    {% if product.get_category %}
+                {% else %}no id
+                    {% if product.get_category %}product
                         {% category_tree product.get_category.id %}
-                    {% else %}
+                    {% else %}category tree
                         {% category_tree %}
                     {% endif %}
                 {% endif %}

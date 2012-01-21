@@ -12,8 +12,8 @@
 
 {% if all_products_list %}
     <h4>{% trans "Featured Items" %}</h4>
-    {% for product in all_products_list %} 
-            <div class = "productImage">    
+    {% for product in all_products_list %}
+            <div class = "productImage">
            {% if product.main_image %}
               <center>
               {% thumbnail product.main_image.picture 85x85 as image %}
