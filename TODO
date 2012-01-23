@@ -1,6 +1,6 @@
-#3    Only superusers shall see the "site" field in the admin. The value a
-      user sets there is already overwritten for non-superusers, but they can
-      still see that field, which will likely lead to confusion.
+- #3  Only superusers shall see the "site" field in the admin. The value a---
+------user sets there is already overwritten for non-superusers, but they----
+------can still see that field, which will likely lead to confusion.---------
 
 #4    Only superusers may set and change the site setting of a user.
 
@@ -13,11 +13,26 @@
 
 #10   Add per-site-skins: https://bitbucket.org/bkroeze/django-site-skins
 
-#11   The admin crashes (without any exception thrown) when there is a
-      MultishopProduct returned by the admin's queryset method. Reason may
-      be recursion issues? Currently "only" a real issue for super admins
-      (since they are the only ones where ALL products are returned in the
-      admin) and in case you are running a virtual shop but would also want
-      to add your own products (is this Use Case actually required?).
+#12   Multishop products need to get their own categories.
+      See #12.
 
-#12   
+#13   When saving a product in the admin, the MultishopCategories that
+      product may be linked to get lost. This happens when those categories
+      belong to a different site (which is basically always the case) and the
+      user updating the product is not a superuser (which is also the case
+      basically always). One solution may be to overwrite the default save
+      behaviour in the admin and "magically" add all those categories to the
+      list of chosen categories automatically when they were linked to that
+      product again.
+      See #13.
+
+#14   When adding a Product, all it's ConfigurableProducts that may exist are
+      also added automatically to to the virtual shops. To me, that makes
+      perfect sense and I'd leave it like that. However, maybe someone does
+      not want to have this behaviour?
+
+#15   MultishopProductAdmin#get_form seems to cause problems sometimes. When
+      the admin is open with a superuser in Safari and a limited user in
+      Firefox, the admin panel on Safari shows the version for limited users
+      only. This happens everytime after the site has once been viewed in FF
+      with the limited user.

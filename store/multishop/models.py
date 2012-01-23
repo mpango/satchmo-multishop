@@ -57,30 +57,6 @@ class MultishopProduct(models.Model):
 	
 
 
-class MultishopCategory(Category):
-	parent_category = models.ForeignKey(Category, related_name='child_category')
-	
-	def save(self, force_insert=False, force_update=False):
-		self.name = self.parent_category.name
-		self.slug = self.parent_category.slug
-		self.meta = self.parent_category.meta
-		self.description = self.parent_category.description
-		self.ordering = self.parent_category.ordering
-		self.is_active = self.parent_category.is_active
-		self.date_added = datetime.date.today()
-		super(MultishopCategory, self).save(force_insert=force_insert, force_update=force_update)
-	
-	def _get_subtype(self):
-		return 'Multishop'
-	
-	def __unicode__(self):
-		return u"Multishop Category: %s" % self.name
-	
-	class Meta:
-		verbose_name = _('Multishop Category')
-		verbose_name_plural = _('Multishop Categories')
-	
-
 
 def user_can_edit(self, user_obj):
 	'''

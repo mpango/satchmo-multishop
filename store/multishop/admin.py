@@ -3,7 +3,8 @@ from django.forms import ValidationError
 from django.contrib import admin
 from django.contrib.comments       import Comment
 from django.contrib.comments.admin import CommentsAdmin
-from multishop.models import UserProfile, MultishopProduct, MultishopCategory
+from multishop.models import UserProfile, MultishopProduct
+from multishop.forms import MultishopProductAdminForm
 from product.models import Product, Category, AttributeOption, OptionGroup, \
                            Option, Discount, TaxClass
 from product.admin  import ProductOptions, CategoryOptions, \
@@ -44,43 +45,6 @@ from satchmo_store.shop.admin  import OrderOptions, OrderItemOptions, \
                                       OrderPaymentDetail_Inline, \
                                       OrderPaymentFailureDetail_Inline
 
-#
-# Register the UserProfile so we can manage it in the admin panel as well.
-# 
-admin.site.register(UserProfile)
-
-#
-# Register our custom MultishopProduct
-#
-# class MultishopProductAdmin(admin.ModelAdmin):
-# 	list_display = ('product', 'site', 'slug', )
-# 	list_filter = ['site', ]
-# 	search_fields = ['slug', 'sku', 'name', ]
-# 	
-# 	fieldsets = (
-# 		('Product', {
-# 			'fields': ('product', 'site', 'category', )
-# 		}),
-# 	)
-# 
-# admin.site.register(MultishopProduct, MultishopProductAdmin)
-admin.site.register(MultishopProduct)
-
-#
-# Register our custom MultishopCategory
-#
-class MultishopCategoryAdmin(admin.ModelAdmin):
-	list_display = ('parent_category', 'site', 'slug', )
-	list_filter = ['site', ]
-	search_fields = ['slug', 'name', ]
-	
-	fieldsets = (
-		('Category', {
-			'fields': ('parent_category', 'site', 'parent', )
-		}),
-	)
-
-admin.site.register(MultishopCategory, MultishopCategoryAdmin)
 
 class MultishopLimitedFieldMixin(object):
 	"""
@@ -170,6 +134,16 @@ class MultishopMixinAdmin(MultishopLimitedFieldMixin, admin.ModelAdmin):
 			return obj.site
 	
 	
+	def get_form(self, request, obj=None, **kwargs):
+		"""
+		Here we are making the site field readonly in order to hide it from
+		non-superusers.
+		"""
+		if not request.user.is_superuser:
+			self.readonly_fields = self.readonly_fields + ('site', )
+		return super(MultishopMixinAdmin, self).get_form(request, obj, **kwargs)
+	
+	
 	def save_model(self, request, obj, form, change):
 		"""
 		We need to set the object's site to the current user's site unless
@@ -231,6 +205,98 @@ class MultishopMixinAdmin(MultishopLimitedFieldMixin, admin.ModelAdmin):
 				queryset = queryset.filter(site=user_site)
 		
 		return queryset
+
+
+"""
+Our own completely custom multishop admin classes.
+"""
+#
+# Register the UserProfile so we can manage it in the admin panel as well.
+# 
+admin.site.register(UserProfile)
+
+#
+# Register our custom MultishopProduct
+#
+class MultishopProductAdmin(admin.ModelAdmin):
+	list_display = ('product', 'slug', )
+	# list_filter = ['product__site', ]
+	search_fields = ['product__slug', 'product__sku', 'product__name', ]
+	form = MultishopProductAdminForm
+	
+	# fieldsets = (
+	# 	('Product', {
+	# 		'fields': ('product', 'product__site', 'category', )
+	# 	}),
+	# )
+	
+	def __init__(self, model, admin_site):
+		self.form.admin_site = admin_site 
+		super(MultishopProductAdmin, self).__init__(model, admin_site)
+	
+	
+	def slug(self, obj):
+		return obj.product.slug
+	
+	
+	def get_form(self, request, obj=None, **kwargs):
+		"""
+		"""
+		form = super(MultishopProductAdmin, self).get_form(request, obj, **kwargs)
+		if obj is not None:
+			form.declared_fields['categories'].initial = obj.product.category.all
+		if not request.user.is_superuser:
+			user_site = request.user.get_profile().site
+			form.declared_fields['categories'].queryset = Category.objects.filter(site__id=user_site.id)
+			self.readonly_fields = ('virtual_sites', )
+			if obj is not None:
+				form.declared_fields['categories'].initial = obj.product.category.filter(site__id=user_site.id)
+		return form
+	
+	
+	def save_model(self, request, obj, form, change):
+		"""
+		Purpose of overwriting this method here is to handle the categories
+		of the original product. When a non-superuser submits the form, only
+		categories from his own site can be selected and hence stored. But we
+		do have to keep all other categories, belonging to different sites as
+		well here. Assuring this relationship doesn't break is done here.
+		"""
+		new_cats = set(form.cleaned_data['categories'])
+		if not request.user.is_superuser:
+			user_site = request.user.get_profile().site
+			# current categories of the linked product
+			old_cats = obj.product.category.all()
+			# the ones we definitely keep (all but from this site)
+			keep_cats = set(old_cats.exclude(site=user_site))
+			# the (new) ones to add; same site
+			new_cats = keep_cats.union(set(form.cleaned_data['categories']))
+			# store the site
+			obj.virtual_sites.add(request.user.get_profile().site)
+		obj.product.category = new_cats
+		obj.save()
+		obj.product.save()
+	
+	
+	def queryset(self, request):
+		"""
+		Overwrite to filter out objects the current user of that request does
+		not have any kind of access to. That is all products that are not
+		linked to the same site. Superusers have access to all objects.
+		"""
+		queryset = super(MultishopProductAdmin, self).queryset(request)
+		user_site = request.user.get_profile().site
+		
+		# Limit the query by adding a filter for the site when the request is
+		# not originating from a superuser.
+		# If the user does not yet have a site set, he won't see anything!
+		if not request.user.is_superuser:
+			queryset = queryset.filter(virtual_sites__in=[user_site])
+		
+		return queryset
+
+admin.site.register(MultishopProduct, MultishopProductAdmin)
+
 
 
 """
