@@ -244,6 +244,12 @@ class MultishopProductAdmin(admin.ModelAdmin):
 	
 	
 	def get_readonly_fields(self, request, obj=None):
+		"""
+		Adds the virtual_sites attribute to the readonly fields for all
+		non-superusers so they don't get confused about that one so much (as
+		it's automatically set to the user's site anyway).
+		However, in this case we may completely remove it from the field?
+		"""
 		readonly_fields = super(MultishopProductAdmin, self).get_readonly_fields(request, obj)
 		if not request.user.is_superuser:
 			readonly_fields += ('virtual_sites', )
@@ -252,19 +258,18 @@ class MultishopProductAdmin(admin.ModelAdmin):
 	
 	def get_form(self, request, obj=None, **kwargs):
 		"""
+		TODO: setting the queryset and the initial value here doesn't work as
+		it should because it caches the result. We'd need to move all that
+		stuff into a different method. See #15.
 		"""
 		form = super(MultishopProductAdmin, self).get_form(request, obj, **kwargs)
-		print "called"
 		if obj is not None:
 			form.declared_fields['categories'].initial = obj.product.category.all()
 		if not request.user.is_superuser:
-			print "no superuser"
 			user_site = request.user.get_profile().site
 			form.declared_fields['categories'].queryset = Category.objects.filter(site__id=user_site.id)
 			if obj is not None:
 				form.declared_fields['categories'].initial = obj.product.category.filter(site__id=user_site.id)
-		else:
-			print "is a superuser"
 		return form
 	
 	
@@ -276,7 +281,6 @@ class MultishopProductAdmin(admin.ModelAdmin):
 		do have to keep all other categories, belonging to different sites as
 		well here. Assuring this relationship doesn't break is done here.
 		"""
-		print "saving %s (%d)"%(obj, obj.pk)
 		new_cats = set(form.cleaned_data['categories'])
 		if not request.user.is_superuser:
 			user_site = request.user.get_profile().site
@@ -285,19 +289,14 @@ class MultishopProductAdmin(admin.ModelAdmin):
 			# the ones we definitely keep (all but from this site)
 			keep_cats = set(old_cats.exclude(site=user_site))
 			# the (new) ones to add; same site
-			new_cats = keep_cats.union(set(form.cleaned_data['categories']))
-			# store the site
-			print "will save object"
+			new_cats = keep_cats.union(new_cats)
+			# store the site (first saving the object for the m2m stuff)
 			obj.save()
-			print 'will add site'
 			obj.virtual_sites.add(request.user.get_profile().site)
-			print "did add site"
+			form.cleaned_data['categories'] = list(new_cats)
 		obj.product.category = new_cats
-		print "will save"
 		obj.save()
-		print "did save"
 		obj.product.save()
-		print "done saving"
 	
 	
 	def queryset(self, request):
@@ -385,6 +384,33 @@ class MultishopProductOptions(ProductOptions, MultishopMixinAdmin):
 	site_limited_fields = ('category', 'related_items', 'also_purchased', \
                            'taxClass')
 	inlines = [MultishopProductAttribute_Inline, Price_Inline, ProductImage_Inline]
+	
+	def save_model(self, request, obj, form, change):
+		"""
+			Purpose of overwriting this method here is to handle the categories
+			of the original product. When a non-superuser submits the form, only
+			categories from his own site can be selected and hence stored. But we
+			do have to keep all other categories, belonging to different sites as
+			well here. Assuring this relationship doesn't break is done here.
+		"""
+		new_cats = set(form.cleaned_data['category'])
+		# import pdb; pdb.set_trace()
+		if not request.user.is_superuser:
+			user_site = request.user.get_profile().site
+			# current categories of the linked product
+			old_cats, keep_cats = [], set([])
+			if obj.pk is not None:
+				old_cats = obj.category.all()
+				# the ones we definitely keep (all but from this site)
+				keep_cats = set(old_cats.exclude(site=user_site))
+			# the (new) ones to add; same site
+			new_cats = keep_cats.union(new_cats)
+			form.cleaned_data = list(new_cats)
+		# store the site (first saving the object for the m2m stuff)
+		super(MultishopProductOptions, self).save_model(request, obj, form, change)
+		for cat in new_cats:
+			obj.category.add(cat)
+		obj.save()
 admin.site.register(Product, MultishopProductOptions)
 
 admin.site.unregister(Category)

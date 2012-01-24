@@ -13,19 +13,6 @@
 
 #10   Add per-site-skins: https://bitbucket.org/bkroeze/django-site-skins
 
-#12   Multishop products need to get their own categories.
-      See #12.
-
-#13   When saving a product in the admin, the MultishopCategories that
-      product may be linked to get lost. This happens when those categories
-      belong to a different site (which is basically always the case) and the
-      user updating the product is not a superuser (which is also the case
-      basically always). One solution may be to overwrite the default save
-      behaviour in the admin and "magically" add all those categories to the
-      list of chosen categories automatically when they were linked to that
-      product again.
-      See #13.
-
 #14   When adding a Product, all it's ConfigurableProducts that may exist are
       also added automatically to to the virtual shops. To me, that makes
       perfect sense and I'd leave it like that. However, maybe someone does
@@ -36,10 +23,8 @@
       Firefox, the admin panel on Safari shows the version for limited users
       only. This happens everytime after the site has once been viewed in FF
       with the limited user.
+      See http://stackoverflow.com/questions/8985889/dynamic-manipulation-of-django-admin-form
 
-#16   Admin's delete on MultishopProduct shall only remove the virtual_site id
-      of the user who requested it. Exception being superusers, who will
-      really delete the instance(s).
-
-#17   
+#17   Adding a customer while ordering doesn't add the "site" attribute to
+      that user correctly (it seems).
 
