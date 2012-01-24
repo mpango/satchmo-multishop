@@ -36,3 +36,10 @@
       Firefox, the admin panel on Safari shows the version for limited users
       only. This happens everytime after the site has once been viewed in FF
       with the limited user.
+
+#16   Admin's delete on MultishopProduct shall only remove the virtual_site id
+      of the user who requested it. Exception being superusers, who will
+      really delete the instance(s).
+
+#17   
+

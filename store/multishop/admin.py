@@ -3,6 +3,7 @@ from django.forms import ValidationError
 from django.contrib import admin
 from django.contrib.comments       import Comment
 from django.contrib.comments.admin import CommentsAdmin
+from django.utils.translation import ugettext_lazy as _
 from multishop.models import UserProfile, MultishopProduct
 from multishop.forms import MultishopProductAdminForm
 from product.models import Product, Category, AttributeOption, OptionGroup, \
@@ -134,14 +135,16 @@ class MultishopMixinAdmin(MultishopLimitedFieldMixin, admin.ModelAdmin):
 			return obj.site
 	
 	
-	def get_form(self, request, obj=None, **kwargs):
+	def get_readonly_fields(self, request, obj=None):
 		"""
-		Here we are making the site field readonly in order to hide it from
-		non-superusers.
+		Adds the site attribute to the readonly fields for all non-superusers
+		so they don't get confused about that one so much (as it's
+		automatically set to the user's site anyway).
 		"""
+		readonly_fields = super(MultishopMixinAdmin, self).get_readonly_fields(request, obj)
 		if not request.user.is_superuser:
-			self.readonly_fields = self.readonly_fields + ('site', )
-		return super(MultishopMixinAdmin, self).get_form(request, obj, **kwargs)
+			readonly_fields += ('site', )
+		return readonly_fields
 	
 	
 	def save_model(self, request, obj, form, change):
@@ -223,6 +226,7 @@ class MultishopProductAdmin(admin.ModelAdmin):
 	# list_filter = ['product__site', ]
 	search_fields = ['product__slug', 'product__sku', 'product__name', ]
 	form = MultishopProductAdminForm
+	actions = ['remove_selected', ]
 	
 	# fieldsets = (
 	# 	('Product', {
@@ -239,18 +243,28 @@ class MultishopProductAdmin(admin.ModelAdmin):
 		return obj.product.slug
 	
 	
+	def get_readonly_fields(self, request, obj=None):
+		readonly_fields = super(MultishopProductAdmin, self).get_readonly_fields(request, obj)
+		if not request.user.is_superuser:
+			readonly_fields += ('virtual_sites', )
+		return readonly_fields
+	
+	
 	def get_form(self, request, obj=None, **kwargs):
 		"""
 		"""
 		form = super(MultishopProductAdmin, self).get_form(request, obj, **kwargs)
+		print "called"
 		if obj is not None:
-			form.declared_fields['categories'].initial = obj.product.category.all
+			form.declared_fields['categories'].initial = obj.product.category.all()
 		if not request.user.is_superuser:
+			print "no superuser"
 			user_site = request.user.get_profile().site
 			form.declared_fields['categories'].queryset = Category.objects.filter(site__id=user_site.id)
-			self.readonly_fields = ('virtual_sites', )
 			if obj is not None:
 				form.declared_fields['categories'].initial = obj.product.category.filter(site__id=user_site.id)
+		else:
+			print "is a superuser"
 		return form
 	
 	
@@ -262,6 +276,7 @@ class MultishopProductAdmin(admin.ModelAdmin):
 		do have to keep all other categories, belonging to different sites as
 		well here. Assuring this relationship doesn't break is done here.
 		"""
+		print "saving %s (%d)"%(obj, obj.pk)
 		new_cats = set(form.cleaned_data['categories'])
 		if not request.user.is_superuser:
 			user_site = request.user.get_profile().site
@@ -272,10 +287,17 @@ class MultishopProductAdmin(admin.ModelAdmin):
 			# the (new) ones to add; same site
 			new_cats = keep_cats.union(set(form.cleaned_data['categories']))
 			# store the site
+			print "will save object"
+			obj.save()
+			print 'will add site'
 			obj.virtual_sites.add(request.user.get_profile().site)
+			print "did add site"
 		obj.product.category = new_cats
+		print "will save"
 		obj.save()
+		print "did save"
 		obj.product.save()
+		print "done saving"
 	
 	
 	def queryset(self, request):
@@ -294,6 +316,47 @@ class MultishopProductAdmin(admin.ModelAdmin):
 			queryset = queryset.filter(virtual_sites__in=[user_site])
 		
 		return queryset
+	
+	
+	def get_actions(self, request):
+		"""
+		Disable the delete action for non-superuser and disable the remove
+		action for superusers. So each group does only have one of these two
+		options available. (Removing doesn't really make sense for
+		superusers, as they can manipulate the MultishopProduct's
+		virtual_sites attribute directly anyway).
+		"""
+		actions = super(MultishopProductAdmin, self).get_actions(request)
+		if not request.user.is_superuser and 'delete_selected' in actions:
+			del actions['delete_selected']
+		if request.user.is_superuser and 'remove_selected' in actions:
+			del actions['remove_selected']
+		return actions
+	
+	
+	def remove_selected(self, request, queryset):
+		"""
+		Loop through all objects the user has selected and call our custom
+		remove function. This is basically a delete but with the difference
+		that only the site references get removed from the model. The actual
+		model's #delete method only gets called when no other sites are left
+		after the site has been removed. Thsi prevents accidental removal of
+		a product from other shops. Superuser may still call delete directly
+		causing the product to be removed from all virtual shops.
+		"""
+		user_site = request.user.get_profile().site
+		for obj in queryset:
+			# remove the current user's site
+			obj.virtual_sites.remove(user_site)
+			# remove all the object's categories for that site
+			for cat_to_remove in Category.objects.by_site(user_site).all():
+				obj.product.category.remove(cat_to_remove)
+			if obj.virtual_sites.count() == 0:
+				# delete when there are no sites left now
+				obj.delete()
+		self.message_user(request, "%s Multishop Products were successfully removed" % len(queryset))
+	
+	remove_selected.short_description = _('Remove Selected Multishop Products')
 
 admin.site.register(MultishopProduct, MultishopProductAdmin)
 
