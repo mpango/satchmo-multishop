@@ -23,16 +23,6 @@
 #18   Admin's in virtual shops (e.g. the order admin) need to take account for
       virtual MultishopProducts in their validation of linked products, too.
 
-#19   The skins seem to have some (caching-related?) problems with getting
-      the correct site_id sometimes. Surfing on both (currently the virtual
-      and the real) shops at the same time causes the skins to sometimes
-      appear for the wrong site. Multiple reloads on one page can then result
-      in the skins (appearingly) randomly switching back and forth. I think
-      this could either be a caching problem, a config issue or something
-      general with the usage of that threaded_multihost thing. Same thing
-      that also occured on the lindenleaves page when working on the site
-      deactivation.
-
 #20   Satchmo's configurable is missing in the server's auth system.
       Something must have gone wrong with the initial satchmo installation
       there. Add the missing ones manually and contact admin about that issue
