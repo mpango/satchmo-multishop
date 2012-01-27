@@ -1,17 +1,9 @@
-- #3  Only superusers shall see the "site" field in the admin. The value a---
-------user sets there is already overwritten for non-superusers, but they----
-------can still see that field, which will likely lead to confusion.---------
-
-#4    Only superusers may set and change the site setting of a user.
-
 #7    How to handle registration.RegistrationProfile? Do we have to overwrite
       the manager here? The docs say, it provides "a mechanism for
       automatically creating an instance of a site-specific profile
       model". What exactly does that "site-specific profile" mean for us?
       Also, find out if the satchmo admin for it uses an admin.ModelAdmin
       subclass or simply the default (which we currently only use).
-
-#10   Add per-site-skins: https://bitbucket.org/bkroeze/django-site-skins
 
 #14   When adding a Product, all it's ConfigurableProducts that may exist are
       also added automatically to to the virtual shops. To me, that makes
@@ -26,5 +18,18 @@
       See http://stackoverflow.com/questions/8985889/dynamic-manipulation-of-django-admin-form
 
 #17   Adding a customer while ordering doesn't add the "site" attribute to
-      that user correctly (it seems).
+      that user correctly.
+
+#18   Admin's in virtual shops (e.g. the order admin) need to take account for
+      virtual MultishopProducts in their validation of linked products, too.
+
+#19   The skins seem to have some (caching-related?) problems with getting
+      the correct site_id sometimes. Surfing on both (currently the virtual
+      and the real) shops at the same time causes the skins to sometimes
+      appear for the wrong site. Multiple reloads on one page can then result
+      in the skins (appearingly) randomly switching back and forth. I think
+      this could either be a caching problem, a config issue or something
+      general with the usage of that threaded_multihost thing. Same thing
+      that also occured on the lindenleaves page when working on the site
+      deactivation.
 
