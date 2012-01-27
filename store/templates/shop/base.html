@@ -10,12 +10,10 @@
     {% block stylesheet %}
       {# first, load the installation wide default stylesheet #}
       <link rel="stylesheet" href="{{ media_url }}css/style.css" />
-      {#
-         Example usage of django-site-skins: put {% load skin_tags %} in your
-         template and then  use {% skin_media_url RESOURCE %} to load the
-         skin-specific resource.
-         These can be found at /static/skins/SKINNAME/[...]
-      #}
+      {# Example usage of django-site-skins: put {% load skin_tags %} in #}
+      {# your template and then  use {% skin_media_url RESOURCE %} to load #}
+      {# the skin-specific resource. #}
+      {# These can be found at /static/skins/SKINNAME/[...] #}
       <link rel="stylesheet" href="{% skin_media_url css/style.css %}" />
     {% endblock %}
     <title>{% block title %}{{ shop_name }}{% if pagetitle %}: {{ pagetitle }}{% endif %}{% endblock %}</title>
