@@ -1,6 +1,7 @@
 # encoding: utf-8
 from django.db import models
-from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.db.models.signals import post_save, pre_save
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from product.models import Product, Category, TaxClass, AttributeOption, \
@@ -56,6 +57,12 @@ class MultishopProduct(models.Model):
 		verbose_name_plural = _('Multishop Products')
 	
 
+
+@receiver(pre_save, sender=Contact)
+def add_site(sender, instance, **kwargs):
+	"""Adds the current page's site to the contact if it hasn't been set."""
+	if not instance.site:
+		instance.site = Site.objects.get_current()
 
 
 def user_can_edit(self, user_obj):
