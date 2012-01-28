@@ -544,7 +544,7 @@ admin.site.register(Interaction, MultishopInteractionAdmin)
 
 admin.site.unregister(Contact)
 class MultishopContactAdmin(ContactOptions, MultishopMixinAdmin):
-	site_limited_fields = ('role', 'organization', )
+	site_limited_fields = ('organization', )
 admin.site.register(Contact, MultishopContactAdmin)
 
 admin.site.unregister(Organization)
