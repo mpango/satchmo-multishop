@@ -71,6 +71,18 @@ Product.add_to_class('can_edit', user_can_edit)
 registry.register('can_edit', Product)
 
 
+def is_shop_owner(self):
+	"""Returns True when the User is in the 'shop_owner' group."""
+	return self.groups.filter(name='shop_owner').count() == 1
+User.add_to_class('is_shop_owner', is_shop_owner)
+
+
+def is_virtual_shop_owner(self):
+	"""Returns True when the User is in the 'virtual_shop_owner' group."""
+	return self.groups.filter(name='virtual_shop_owner').count() == 1
+User.add_to_class('is_virtual_shop_owner', is_virtual_shop_owner)
+
+
 class UserProfile(models.Model):
 	# The required link to the django.contrib.auth.User model.
 	user = models.OneToOneField(User)

@@ -1,5 +1,7 @@
 # encoding: utf-8
 from django.forms import ValidationError
+from django.http import HttpResponseRedirect
+from django.db.models import Q
 from django.contrib import admin
 from django.contrib.comments       import Comment
 from django.contrib.comments.admin import CommentsAdmin
@@ -385,13 +387,26 @@ class MultishopProductOptions(ProductOptions, MultishopMixinAdmin):
                            'taxClass')
 	inlines = [MultishopProductAttribute_Inline, Price_Inline, ProductImage_Inline]
 	
+	def changelist_view(self, request, extra_context=None):
+		"""
+		When calling this view from a virtual shop, we actually want to show
+		virtual products (MultishopProducts) instead of the actual product as
+		virtual shops should not have their own products anyway.
+		So we check if the request is coming from a virtual shop owner and
+		in that case redirect to the MultishopProduct admin.
+		"""
+		if request.GET.get("pop") is not None and request.user.is_virtual_shop_owner():
+			return HttpResponseRedirect('/admin/multishop/multishopproduct/?t=product&pop=1')
+		else:
+			return super(MultishopProductOptions, self).changelist_view(request, extra_context)
+	
 	def save_model(self, request, obj, form, change):
 		"""
-			Purpose of overwriting this method here is to handle the categories
-			of the original product. When a non-superuser submits the form, only
-			categories from his own site can be selected and hence stored. But we
-			do have to keep all other categories, belonging to different sites as
-			well here. Assuring this relationship doesn't break is done here.
+		Purpose of overwriting this method here is to handle the categories
+		of the original product. When a non-superuser submits the form, only
+		categories from his own site can be selected and hence stored. But we
+		do have to keep all other categories, belonging to different sites as
+		well here. Assuring this relationship doesn't break is done here.
 		"""
 		new_cats = set(form.cleaned_data['category'])
 		# import pdb; pdb.set_trace()
@@ -548,6 +563,21 @@ admin.site.register(ContactOrganization, MultishopContactOrganizationAdmin)
 admin.site.unregister(Order)
 class MultishopOrderItem_Inline(MultishopLimitedFieldMixin, OrderItem_Inline):
 	site_limited_fields = ('product', )
+	
+	def _filter_field(self, field, db_field, request):
+		"""
+		OrderItems actually need to take into account MultishopProducts when
+		they are used inline. So we need to change the filter here.
+		"""
+		user_site = request.user.get_profile().site
+		if db_field.name in self.site_limited_fields:
+			field.queryset = field.queryset.filter(
+				Q(multishopproduct__virtual_sites__in=[user_site]) |
+				Q(site__exact=user_site)
+			)
+		return field
+	
+
 class MultishopOrderAdmin(OrderOptions, MultishopMixinAdmin):
 	site_limited_fields = ('contact', )
 	inlines = [MultishopOrderItem_Inline, OrderStatus_Inline, OrderVariable_Inline,
