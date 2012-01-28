@@ -570,7 +570,7 @@ class MultishopOrderItem_Inline(MultishopLimitedFieldMixin, OrderItem_Inline):
 		they are used inline. So we need to change the filter here.
 		"""
 		user_site = request.user.get_profile().site
-		if db_field.name in self.site_limited_fields:
+		if not request.user.is_superuser and db_field.name in self.site_limited_fields:
 			field.queryset = field.queryset.filter(
 				Q(multishopproduct__virtual_sites__in=[user_site]) |
 				Q(site__exact=user_site)
@@ -578,10 +578,20 @@ class MultishopOrderItem_Inline(MultishopLimitedFieldMixin, OrderItem_Inline):
 		return field
 	
 
+class MultishopOrderAuthorizationDetail_Inline(MultishopLimitedFieldMixin, OrderAuthorizationDetail_Inline):
+	site_limited_fields = ('capture', )
+	
+	def _filter_field(self, field, db_field, request):
+		"""OrderAuthorizations need to be limited according to the order."""
+		user_site = request.user.get_profile().site
+		if not request.user.is_superuser and db_field.name in self.site_limited_fields:
+			field.queryset = field.queryset.filter(order__site__exact=user_site)
+		return field
+
 class MultishopOrderAdmin(OrderOptions, MultishopMixinAdmin):
 	site_limited_fields = ('contact', )
 	inlines = [MultishopOrderItem_Inline, OrderStatus_Inline, OrderVariable_Inline,
-		OrderTaxDetail_Inline, OrderAuthorizationDetail_Inline,
+		OrderTaxDetail_Inline, MultishopOrderAuthorizationDetail_Inline,
 		OrderPaymentDetail_Inline, OrderPaymentFailureDetail_Inline]
 admin.site.register(Order, MultishopOrderAdmin)
 
