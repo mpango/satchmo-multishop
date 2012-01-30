@@ -10,13 +10,6 @@
       perfect sense and I'd leave it like that. However, maybe someone does
       not want to have this behaviour?
 
-#15   MultishopProductAdmin#get_form seems to cause problems sometimes. When
-      the admin is open with a superuser in Safari and a limited user in
-      Firefox, the admin panel on Safari shows the version for limited users
-      only. This happens everytime after the site has once been viewed in FF
-      with the limited user.
-      See http://stackoverflow.com/questions/8985889/dynamic-manipulation-of-django-admin-form
-
 #20   Satchmo's configurable is missing in the server's auth system.
       Something must have gone wrong with the initial satchmo installation
       there. Add the missing ones manually and contact admin about that issue

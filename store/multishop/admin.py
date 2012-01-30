@@ -8,6 +8,7 @@ from django.core.urlresolvers import reverse
 from django.contrib.comments       import Comment
 from django.contrib.comments.admin import CommentsAdmin
 from django.utils.translation import ugettext_lazy as _
+from django.shortcuts import get_object_or_404
 from multishop.models import UserProfile, MultishopProduct
 from multishop.forms import MultishopProductAdminForm
 from product.models import Product, Category, AttributeOption, OptionGroup, \
@@ -232,6 +233,7 @@ class MultishopProductAdmin(admin.ModelAdmin):
 	form = MultishopProductAdminForm
 	actions = ['remove_selected', ]
 	change_form_template = 'admin/multishop/multishopproduct_change_form.html'
+	add_form_template = 'admin/multishop/multishopproduct_add_form.html'
 	
 	def __init__(self, model, admin_site):
 		self.form.admin_site = admin_site 
@@ -242,37 +244,35 @@ class MultishopProductAdmin(admin.ModelAdmin):
 		return obj.product.slug
 	
 	
-		# def get_form(self, request, obj=None, **kwargs):
-		# 	"""
-		# 	TODO: setting the queryset and the initial value here doesn't work as
-		# 	it should because it caches the result. We'd need to move all that
-		# 	stuff into a different method. See #15.
-		# 	"""
-		# 	form = super(MultishopProductAdmin, self).get_form(request, obj, **kwargs)
-		# 	if obj is not None:
-		# 		form.declared_fields['categories'].initial = obj.product.category.all()
-		# 	if not request.user.is_superuser:
-		# 		user_site = request.user.get_profile().site
-		# 		form.declared_fields['categories'].queryset = Category.objects.filter(site__id=user_site.id)
-		# 		if obj is not None:
-		# 			form.declared_fields['categories'].initial = obj.product.category.filter(site__id=user_site.id)
-		# 	return form
+	def add_view(self, request, form_url='', extra_context=None):
+		user_site = request.user.get_profile().site
+		
+		if request.method == 'POST':
+			customform = MultishopProductAdminForm(request.POST)
+		else:
+			customform = MultishopProductAdminForm()
+		
+		if not request.user.is_superuser:
+			customform.fields.get('virtual_sites').widget = forms.HiddenInput()
+			customform.fields.get('categories').queryset = Category.objects.filter(site__id=user_site.id)
+		
+		my_context = {
+			'customform': customform,
+		}
+		return super(MultishopProductAdmin, self).add_view(request,
+			form_url, extra_context=my_context)
 	
 	
 	def change_view(self, request, object_id, extra_context=None):
 		instance = None
 		user_site = request.user.get_profile().site
 		
-		print "adding"
-		
-		if MultishopProduct.objects.filter(product__id=object_id).count() == 1:
-			instance = MultishopProduct.objects.get(product__id=object_id)
-			customform = MultishopProductAdminForm(instance=instance)
-			customform.fields.get('categories').initial = instance.product.category.all()
-		elif request.method == 'POST':
+		if request.method == 'POST':
 			customform = MultishopProductAdminForm(request.POST)
 		else:
-			customform = MultishopProductAdminForm()
+			instance = get_object_or_404(MultishopProduct, product__id=object_id)
+			customform = MultishopProductAdminForm(instance=instance)
+			customform.fields.get('categories').initial = instance.product.category.all()
 		
 		if not request.user.is_superuser:
 			customform.fields.get('virtual_sites').widget = forms.HiddenInput()
