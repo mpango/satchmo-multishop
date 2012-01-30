@@ -1,5 +1,6 @@
 # encoding: utf-8
 from django.forms import ValidationError
+from django import forms
 from django.http import HttpResponseRedirect
 from django.db.models import Q
 from django.contrib import admin
@@ -230,12 +231,7 @@ class MultishopProductAdmin(admin.ModelAdmin):
 	search_fields = ['product__slug', 'product__sku', 'product__name', ]
 	form = MultishopProductAdminForm
 	actions = ['remove_selected', ]
-	
-	# fieldsets = (
-	# 	('Product', {
-	# 		'fields': ('product', 'product__site', 'category', )
-	# 	}),
-	# )
+	change_form_template = 'admin/multishop/multishopproduct_change_form.html'
 	
 	def __init__(self, model, admin_site):
 		self.form.admin_site = admin_site 
@@ -244,6 +240,50 @@ class MultishopProductAdmin(admin.ModelAdmin):
 	
 	def slug(self, obj):
 		return obj.product.slug
+	
+	
+		# def get_form(self, request, obj=None, **kwargs):
+		# 	"""
+		# 	TODO: setting the queryset and the initial value here doesn't work as
+		# 	it should because it caches the result. We'd need to move all that
+		# 	stuff into a different method. See #15.
+		# 	"""
+		# 	form = super(MultishopProductAdmin, self).get_form(request, obj, **kwargs)
+		# 	if obj is not None:
+		# 		form.declared_fields['categories'].initial = obj.product.category.all()
+		# 	if not request.user.is_superuser:
+		# 		user_site = request.user.get_profile().site
+		# 		form.declared_fields['categories'].queryset = Category.objects.filter(site__id=user_site.id)
+		# 		if obj is not None:
+		# 			form.declared_fields['categories'].initial = obj.product.category.filter(site__id=user_site.id)
+		# 	return form
+	
+	
+	def change_view(self, request, object_id, extra_context=None):
+		instance = None
+		user_site = request.user.get_profile().site
+		
+		print "adding"
+		
+		if MultishopProduct.objects.filter(product__id=object_id).count() == 1:
+			instance = MultishopProduct.objects.get(product__id=object_id)
+			customform = MultishopProductAdminForm(instance=instance)
+			customform.fields.get('categories').initial = instance.product.category.all()
+		elif request.method == 'POST':
+			customform = MultishopProductAdminForm(request.POST)
+		else:
+			customform = MultishopProductAdminForm()
+		
+		if not request.user.is_superuser:
+			customform.fields.get('virtual_sites').widget = forms.HiddenInput()
+			customform.fields.get('categories').queryset = Category.objects.filter(site__id=user_site.id)
+		
+		my_context = {
+			'adminform': None,
+			'customform': customform,
+		}
+		return super(MultishopProductAdmin, self).change_view(request,
+			object_id, extra_context=my_context)
 	
 	
 	def get_readonly_fields(self, request, obj=None):
@@ -259,21 +299,21 @@ class MultishopProductAdmin(admin.ModelAdmin):
 		return readonly_fields
 	
 	
-	def get_form(self, request, obj=None, **kwargs):
-		"""
-		TODO: setting the queryset and the initial value here doesn't work as
-		it should because it caches the result. We'd need to move all that
-		stuff into a different method. See #15.
-		"""
-		form = super(MultishopProductAdmin, self).get_form(request, obj, **kwargs)
-		if obj is not None:
-			form.declared_fields['categories'].initial = obj.product.category.all()
-		if not request.user.is_superuser:
-			user_site = request.user.get_profile().site
-			form.declared_fields['categories'].queryset = Category.objects.filter(site__id=user_site.id)
-			if obj is not None:
-				form.declared_fields['categories'].initial = obj.product.category.filter(site__id=user_site.id)
-		return form
+	# def get_form(self, request, obj=None, **kwargs):
+	# 	"""
+	# 	TODO: setting the queryset and the initial value here doesn't work as
+	# 	it should because it caches the result. We'd need to move all that
+	# 	stuff into a different method. See #15.
+	# 	"""
+	# 	form = super(MultishopProductAdmin, self).get_form(request, obj, **kwargs)
+	# 	if obj is not None:
+	# 		form.declared_fields['categories'].initial = obj.product.category.all()
+	# 	if not request.user.is_superuser:
+	# 		user_site = request.user.get_profile().site
+	# 		form.declared_fields['categories'].queryset = Category.objects.filter(site__id=user_site.id)
+	# 		if obj is not None:
+	# 			form.declared_fields['categories'].initial = obj.product.category.filter(site__id=user_site.id)
+	# 	return form
 	
 	
 	def save_model(self, request, obj, form, change):

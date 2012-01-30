@@ -16,7 +16,7 @@ class MultishopProductAdminForm(forms.ModelForm):
 	
 	def clean(self):
 		cleaned_data = self.cleaned_data
-		if cleaned_data.get('product').site in cleaned_data.get('virtual_sites', []):
+		if cleaned_data.get('product') and cleaned_data.get('product').site in cleaned_data.get('virtual_sites', []):
 			raise forms.ValidationError(_("Virtual Site '%s' may not be set,"
 				" as the selected product already belongs to that site."
 				%cleaned_data.get('product').site))
