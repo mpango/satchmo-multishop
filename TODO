@@ -17,12 +17,6 @@
       with the limited user.
       See http://stackoverflow.com/questions/8985889/dynamic-manipulation-of-django-admin-form
 
-#17   Adding a customer while ordering doesn't add the "site" attribute to
-      that user correctly.
-
-#18   Admin's in virtual shops (e.g. the order admin) need to take account for
-      virtual MultishopProducts in their validation of linked products, too.
-
 #20   Satchmo's configurable is missing in the server's auth system.
       Something must have gone wrong with the initial satchmo installation
       there. Add the missing ones manually and contact admin about that issue
