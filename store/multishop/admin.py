@@ -3,6 +3,7 @@ from django.forms import ValidationError
 from django.http import HttpResponseRedirect
 from django.db.models import Q
 from django.contrib import admin
+from django.core.urlresolvers import reverse
 from django.contrib.comments       import Comment
 from django.contrib.comments.admin import CommentsAdmin
 from django.utils.translation import ugettext_lazy as _
@@ -396,7 +397,9 @@ class MultishopProductOptions(ProductOptions, MultishopMixinAdmin):
 		in that case redirect to the MultishopProduct admin.
 		"""
 		if request.GET.get("pop") is not None and request.user.is_virtual_shop_owner():
-			return HttpResponseRedirect('/admin/multishop/multishopproduct/?t=product&pop=1')
+			base_url = reverse('admin:multishop_multishopproduct_changelist')
+			redirect_url = "%s?t=product&pop=1"%base_url
+			return HttpResponseRedirect(redirect_url)
 		else:
 			return super(MultishopProductOptions, self).changelist_view(request, extra_context)
 	
