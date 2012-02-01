@@ -4,6 +4,7 @@ from django.dispatch import receiver
 from django.db.models.signals import post_save, pre_save
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
+from satchmo_store.shop import signals
 from product.models import Product, Category, TaxClass, AttributeOption, \
                            Option
 from tax.modules.area.models import TaxRate
@@ -12,6 +13,7 @@ from satchmo_store.contact.models import ContactInteractionType, \
                                          ContactRole, Interaction, Contact, \
                                          ContactOrganization, Organization
 from django.utils.translation import get_language, ugettext, ugettext_lazy as _
+from multishop.listeners import postprocess_order
 from rulez import registry
 import datetime
 
@@ -115,6 +117,9 @@ def create_user_profile(sender, instance, created, **kwargs):
 	if created:
 		UserProfile.objects.create(user=instance)
 post_save.connect(create_user_profile, sender=User)
+
+
+signals.order_success.connect(postprocess_order, sender=None)
 
 
 """
