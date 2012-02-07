@@ -16,3 +16,5 @@ ALTER TABLE `hochzeitspedia`.`contact_organization` ADD COLUMN `site_id` int(11)
 ALTER TABLE `hochzeitspedia`.`product_attributeoption` ADD COLUMN `site_id` int(11) DEFAULT NULL;
 ALTER TABLE `hochzeitspedia`.`product_option` ADD COLUMN `site_id` int(11) DEFAULT NULL;
 ALTER TABLE `hochzeitspedia`.`product_taxclass` ADD COLUMN `site_id` int(11) DEFAULT NULL;
+
+ALTER TABLE `hochzeitspedia`.`django_site` ADD COLUMN `is_multishop` tinyint(1) NOT NULL DEFAULT '0';

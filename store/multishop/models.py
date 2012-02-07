@@ -5,6 +5,7 @@ from django.db.models.signals import post_save, pre_save
 from django.contrib.auth.models import User
 from django.contrib.sites.models import Site
 from satchmo_store.shop import signals
+from satchmo_store.shop.models import Order
 from product.models import Product, Category, TaxClass, AttributeOption, \
                            Option
 from tax.modules.area.models import TaxRate
@@ -86,10 +87,17 @@ def is_shop_owner(self):
 User.add_to_class('is_shop_owner', is_shop_owner)
 
 
-def is_virtual_shop_owner(self):
+def is_multishop_owner(self):
 	"""Returns True when the User is in the 'virtual_shop_owner' group."""
-	return self.groups.filter(name='virtual_shop_owner').count() == 1
-User.add_to_class('is_virtual_shop_owner', is_virtual_shop_owner)
+	# TODO: Maybe asking the user's site is a better approach to determine if
+	#       the user is running a multishop or a normal shop. This would at
+	#       least eliminate the need for the group 'multishop_owner' to have
+	#       a hardcoded name.
+	#       ATTENTION: Following line would need to get a try-catch for
+	#       superusers, which may not have a site set.
+	# return self.get_profile().site.is_multishop
+	return self.groups.filter(name='multishop_owner').count() == 1
+User.add_to_class('is_multishop_owner', is_multishop_owner)
 
 
 class UserProfile(models.Model):
@@ -108,7 +116,6 @@ class UserProfile(models.Model):
 		verbose_name_plural = _('Benutzer Profile')
 
 
-
 def create_user_profile(sender, instance, created, **kwargs):
 	"""
 	Automatically creates a default user profile for newly created users.
@@ -119,7 +126,24 @@ def create_user_profile(sender, instance, created, **kwargs):
 post_save.connect(create_user_profile, sender=User)
 
 
+
+"""
+Add a new field to the django.contrib.sites.Site which indicates whether the
+respective site represents a normal shop (is_multishop = False) or a new
+'multishop' (is_multishop = True). Default is False.
+"""
+Site.add_to_class('is_multishop', models.BooleanField(default=False))
+
+
+def belongs_to_multishop(self):
+	"""Returns True when the order belongs to a multishop."""
+	return self.site.is_multishop
+Order.add_to_class('belongs_to_multishop', belongs_to_multishop)
+
+
+"""Perform custom actions when an Order has been created successfully."""
 signals.order_success.connect(postprocess_order, sender=None)
+
 
 
 """

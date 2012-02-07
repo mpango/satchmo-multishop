@@ -4,11 +4,14 @@ from django import forms
 from django.http import HttpResponseRedirect
 from django.db.models import Q
 from django.contrib import admin
+from django.contrib.sites.models import Site
+from django.contrib.sites.admin import SiteAdmin
 from django.core.urlresolvers import reverse
 from django.contrib.comments       import Comment
 from django.contrib.comments.admin import CommentsAdmin
 from django.utils.translation import ugettext_lazy as _
 from django.shortcuts import get_object_or_404
+from skins.models import Skin
 from multishop.models import UserProfile, MultishopProduct
 from multishop.forms import MultishopProductAdminForm
 from product.models import Product, Category, AttributeOption, OptionGroup, \
@@ -213,6 +216,19 @@ class MultishopMixinAdmin(MultishopLimitedFieldMixin, admin.ModelAdmin):
 				queryset = queryset.filter(site=user_site)
 		
 		return queryset
+
+
+
+"""
+Extend the default (or rather already extended by django-site-skins) Sites
+Admin class. Add a field for our custom 'is_multishop' flag.
+"""
+new_list_display = list(SiteAdmin.list_display)
+new_list_display.extend(['is_multishop',])
+SiteAdmin.list_display = tuple(new_list_display)
+admin.site.unregister(Site)
+admin.site.register(Site, SiteAdmin)
+
 
 
 """
@@ -436,7 +452,7 @@ class MultishopProductOptions(ProductOptions, MultishopMixinAdmin):
 		So we check if the request is coming from a virtual shop owner and
 		in that case redirect to the MultishopProduct admin.
 		"""
-		if request.GET.get("pop") is not None and request.user.is_virtual_shop_owner():
+		if request.GET.get("pop") is not None and request.user.is_multishop_owner():
 			base_url = reverse('admin:multishop_multishopproduct_changelist')
 			redirect_url = "%s?t=product&pop=1"%base_url
 			return HttpResponseRedirect(redirect_url)
