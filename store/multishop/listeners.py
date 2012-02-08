@@ -1,6 +1,7 @@
 # encoding: utf-8
 from decimal import Decimal
 from satchmo_store.shop.models import Order, OrderItem
+from shipping.utils import update_shipping
 
 
 # entry point triggered from satchmo_store.shop.signals.order_success
@@ -24,8 +25,19 @@ def update_shipping_cost_for_order(order):
 	"""
 	Updates the Order's shipping cost (if needed).
 	"""
-	# TODO
-	pass
+	# The shipping modules mostly require the instance of the Cart. As we do
+	# not have this here anymore, we simply 'fake' it, as all that's needed
+	# by the Shipping modules is access to the CardItem (which they ask for
+	# it's product to see if that's shippable).
+	# Here we define the inner DummyCart mock as a replacement for the Cart
+	# and fill it with the current Order's OrderItem set.
+	class DummyCart(object):
+		def __init__(self, items): self.cartitem_set = items
+		def all(): return self.cartitem_set
+	dummy_cart = DummyCart(order.orderitem_set.all())
+	
+	# Let Satchmo's default shipping calculation method do the heavy work.
+	update_shipping(order, order.shipping_model, order.contact, dummy_cart)
 
 
 def create_copied_order_with_item_group_for_site(order, item_group, site):
@@ -39,18 +51,23 @@ def create_copied_order_with_item_group_for_site(order, item_group, site):
 	new_order.save()
 	
 	for order_item in item_group:
+		# Quickly get and cache the original OrderItemDetails.
+		old_order_item_details = list(order_item.orderitemdetail_set.all())
+		
 		# Set the OrderItem's PK to None, so it gets copied and then add it
 		# to our new Order.
 		order_item.pk = None
 		new_order.orderitem_set.add(order_item)
+		
+		# Re-add a copied version of the original (old) OrderItemDetails.
+		for new_order_item_detail in old_order_item_details:
+			new_order_item_detail.pk = None
+			order_item.orderitemdetail_set.add(new_order_item_detail)
 	
 	# Recalculate the Order's prices and persist the updated values.
-	new_order.recalculate_total()
 	update_shipping_cost_for_order(new_order)
+	new_order.recalculate_total()
 	new_order.save()
-	
-	# TODO: update OrderItemDetail's (if neccessary; it seems so)
-	
 	
 	return new_order
 
@@ -105,13 +122,10 @@ def copy_order_for_site(order, site):
 		shipping_description = order.shipping_description,
 		shipping_method = order.shipping_method,
 		shipping_model = order.shipping_model,
+		shipping_cost = Decimal('0.00'),
 		# TODO: update
-		shipping_cost = order.shipping_cost,
-		# TODO: update
-		shipping_discount = order.shipping_discount,
+		shipping_discount = Decimal('0.00'),
 		tax = order.tax,
 		time_stamp = order.time_stamp,
-		# TODO: Find out what to do with the status for copied orders.
-		#       Should probably be set to "New" (as well).
 		status = order.status)
 	return copied_order
