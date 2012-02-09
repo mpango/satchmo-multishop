@@ -6,12 +6,31 @@
 {% if default_view_tax %}{% load satchmo_tax %}{% endif %}
 
 <h4>{% trans "Items Ordered" %}</h4>
-{% for item in order.orderitem_set.all %}
-{% if default_view_tax %}
-{{ item }} - {{item.unit_price_with_tax|currency}} x {{item.quantity|normalize_decimal}}{% if item.discount %} - {{ item.discount|currency }}{% endif %} = {{item.total_with_tax|currency}}<br/>
-{% else %}
-{{ item }} - {{item.unit_price|currency}} x {{item.quantity|normalize_decimal}}{% if item.discount %} - {{ item.discount|currency }}{% endif %} = {{item.sub_total|currency}}<br/>
-{% endif %}
+
+{% for shop_order in multishop_orders %}
+  <p>
+  <h5>Shop: {{ shop_order.site }}</h5>
+  {% for item in shop_order.orderitem_set.all %}
+    {% if default_view_tax %}
+      {{ item }} - {{item.unit_price_with_tax|currency}} x {{item.quantity|normalize_decimal}}{% if item.discount %} - {{ item.discount|currency }}{% endif %} = {{item.total_with_tax|currency}}<br/>
+    {% else %}
+      {{ item }} - {{item.unit_price|currency}} x {{item.quantity|normalize_decimal}}{% if item.discount %} - {{ item.discount|currency }}{% endif %} = {{item.sub_total|currency}}<br/>
+    {% endif %}
+  {% endfor %}
+  
+  {% if shop_order.is_shippable %}
+    <div>
+      {% trans "Shipping Method" %}
+      {{ shop_order.shipping_description }},
+      {{ shop_order.shipping_method }}
+      {% if default_view_tax %}
+        = {{ shop_order.shipping_with_tax|currency }}
+      {% else %}
+        = {{ shop_order.shipping_sub_total|currency }}
+      {% endif %}
+    </div>
+  {% endif %}
+  </p>
 {% endfor %}
 
 <h4>{% trans "Contact Information" %}</h4>
@@ -33,15 +52,6 @@
 {{ order.ship_state }}<br/>
 {{ order.ship_postal_code }}<br/>
 {{ order.ship_country_name|title }}<br/>
-
-<h4>{% trans "Shipping Method" %}</h4>
-{{ order.shipping_description }}<br/>
-{{ order.shipping_method }}<br/>
-{% if default_view_tax %}
-{{ order.shipping_with_tax|currency }}
-{% else %}
-{{ order.shipping_sub_total|currency }}
-{% endif %}<br/>
 {% endif %}{# order.is_shippable #}
 
 <h4>{% trans "Total" %}</h4>

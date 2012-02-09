@@ -1,28 +1,22 @@
 # encoding: utf-8
 from django import template
 from satchmo_store.shop.models import Order
+from multishop.listeners import multiorder_update_shipping
 
 register = template.Library()
 
 
 def order_details(context, order, default_view_tax=False):
 	"""Output a formatted block giving order details."""
-	segmented_items = {}
-	for order_item in order.orderitem_set.all():
-		site = order_item.product.site
-		if not segmented_items.get(site):
-			segmented_items[site] = {
-				'site': site,
-				'orderitems': [] }
-		segmented_items[site]['orderitems'].append(order_item)
+	multiorder_update_shipping(order)
 	
 	return {
-		'multishop_order' : [segment for segment in segmented_items.values()],
+		'multishop_orders' : order.childorder_set.all(),
 		'order': order,
 		'default_view_tax' : default_view_tax,
 		'request' : context['request']
 	}
-register.inclusion_tag('shop/_order_details.html', takes_context=True)(order_details)
+register.inclusion_tag('shop/_multishop_order_details.html', takes_context=True)(order_details)
 
 # def shop_segmented_cart_display(cart, sale):
 #	"""

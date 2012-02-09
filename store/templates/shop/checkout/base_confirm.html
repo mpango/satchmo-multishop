@@ -27,9 +27,13 @@
 {% endblock %}
 
 {% block order_details %}
+  {% if order.is_multishoporder %}
     {# load our custom multishop order_details templatetag here #}
     {% load checkout_extensions %}
     {% order_details order default_view_tax %}
+  {% else %}
+    {% order_details order default_view_tax %}
+  {% endif %}
 {% endblock %}
 
 {% block payment_display %}

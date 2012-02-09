@@ -1,6 +1,7 @@
 # encoding: utf-8
 from decimal import Decimal
 from satchmo_store.shop.models import Order, OrderItem
+from shipping.config import shipping_method_by_key
 from shipping.utils import update_shipping
 
 
@@ -8,20 +9,17 @@ from shipping.utils import update_shipping
 def postprocess_order(sender, order=None, **kwargs):
 	"""
 	Postprocesses an order after it has successfully been created. Here we
-	can check if the order belongs to a virtual shop and then split the items
-	in it accordingly into multiple related Orders, each containing all the
-	items of one distinct "real" shop.
+	can check if the order belongs to a multishop and then finally update
+	the shipping costs of it's child Orders accordingly.
 	"""
-	pass
-	# print "Initial Order created: %s"%order
-	# if order.belongs_to_multishop():
-	# 	order_item_groups = get_order_item_groups_from_order(order)
-	# 	for site, order_item_group in order_item_groups.iteritems():
-	# 		new_order = create_copied_order_with_item_group_for_site(
-	# 			order, order_item_group, site)
-	# 		print "Created a copied order: %s"%new_order
+	if order.is_multishoporder:
+		for child_order in order.childorder_set.all():
+			update_shipping_cost_for_order(child_order)
+			child_order.recalculate_total()
+			child_order.save()
 
 
+# entry point triggered from satchmo_store.shop.signals.satchmo_post_copy_item_to_order
 def postprocess_order_item_add(cart=None, cartitem=None, order=None, orderitem=None, **kwargs):
 	"""docstring for postprocess_order_item_add"""
 	print "adding orderitem: %s to order: %s"%(orderitem, order)
@@ -50,11 +48,13 @@ def cancel_order(sender, order=None, **kwargs):
 		print "cancelling order %s"%order
 
 
+# entry point triggered from satchmo_store.shop.signals.satchmo_cart_changed
 def remove_orders_on_cart_change(request=None, cart=None, **kwargs):
 	"""Satchmo already listens for this event and deletes any orders."""
 	pass
 
 
+# entry point triggered from satchmo_store.shop.signals.satchmo_order_status_changed
 def status_changed_order(sender, oldstatus="", newstatus="", order=None, **kwargs):
 	"""
 	Triggered by signals.satchmo_order_status_changed. If called with a
@@ -68,23 +68,62 @@ def status_changed_order(sender, oldstatus="", newstatus="", order=None, **kwarg
 			child_order.save()
 
 
+
+class DummyCart(object):
+	"""
+	The shipping modules mostly require the instance of a Cart. As we do
+	not have this anymore sometimes, we simply 'fake' it, as all that's
+	needed by the Shipping modules is access to the CardItem (which they ask
+	for it's product to see if that's shippable).
+	Here we define the a DummyCart mock as a replacement for the Cart which
+	can be filled with the current Order's OrderItem set.
+	"""
+	def __init__(self, items): self.cartitem_set = items
+	def all(): return self.cartitem_set
+
+
 def update_shipping_cost_for_order(order):
 	"""
 	Updates the Order's shipping cost (if needed).
 	"""
-	# The shipping modules mostly require the instance of the Cart. As we do
-	# not have this here anymore, we simply 'fake' it, as all that's needed
-	# by the Shipping modules is access to the CardItem (which they ask for
-	# it's product to see if that's shippable).
-	# Here we define the inner DummyCart mock as a replacement for the Cart
-	# and fill it with the current Order's OrderItem set.
-	class DummyCart(object):
-		def __init__(self, items): self.cartitem_set = items
-		def all(): return self.cartitem_set
 	dummy_cart = DummyCart(order.orderitem_set.all())
 	
 	# Let Satchmo's default shipping calculation method do the heavy work.
 	update_shipping(order, order.shipping_model, order.contact, dummy_cart)
+
+
+def multiorder_update_shipping(order):
+	"""Set the shipping for this order"""
+	# raise an exception when called with a non-multishop order
+	if not order.is_multishoporder:
+		raise Exception("called multiorder_update_shipping with normal order")
+	
+	# Set a default for when no shipping module is used
+	order.shipping_cost = Decimal("0.00")
+	shipping = order.shipping_model
+	contact = order.contact
+	
+	# iterate over all child orders
+	for child_order in order.childorder_set.all():
+		# create a DummyCart
+		cart = DummyCart(child_order.orderitem_set.all())
+		
+		# Save the shipping info
+		shipper = shipping_method_by_key(shipping)
+		shipper.calculate(cart, contact)
+		child_order.shipping_description = shipper.description().encode("utf-8")
+		child_order.shipping_method = shipper.method()
+		child_order.shipping_cost = shipper.cost()
+		child_order.shipping_model = shipping
+		child_order.save()
+		
+		# update the parent's shipping cost
+		order.shipping_cost = Decimal(order.shipping_cost + child_order.shipping_cost)
+	
+	order.shipping_description = shipper.description().encode("utf-8")
+	order.shipping_method = shipper.method()
+	order.shipping_model = shipping
+	order.save()
 
 
 def copy_orderitem_to_order(order_item, new_order):

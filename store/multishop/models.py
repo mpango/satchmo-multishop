@@ -49,7 +49,7 @@ class MultishopProduct(models.Model):
 	
 	def __init__(self, *args, **kwargs):
 		super(MultishopProduct, self).__init__(*args, **kwargs)
-
+	
 	def _get_subtype(self):
 		"""
 		Has to return the name of the product subtype
@@ -63,6 +63,19 @@ class MultishopProduct(models.Model):
 		verbose_name = _('Multishop Product')
 		verbose_name_plural = _('Multishop Products')
 	
+
+
+# see https://docs.djangoproject.com/en/dev/topics/db/models/#proxy-models
+class MultishopOrder(Order):
+	"""
+	Proxy model for Satchmo's Orders. This class is used internally to
+	overwrite some default behaviours of the original Order class, especially
+	shipping price calculations.
+	"""
+	class Meta:
+		proxy = True
+	
+
 
 
 @receiver(pre_save, sender=Contact)
@@ -165,7 +178,7 @@ Order.add_to_class('multishop_order', models.ForeignKey("self",
 
 
 """Perform custom actions when an Order has been created successfully."""
-# signals.order_success.connect(postprocess_order, sender=None)
+signals.order_success.connect(postprocess_order, sender=None)
 
 """Perform custom actions when an Item has been copied over to an Order."""
 signals.satchmo_post_copy_item_to_order.connect(postprocess_order_item_add,
