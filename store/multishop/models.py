@@ -15,7 +15,10 @@ from satchmo_store.contact.models import ContactInteractionType, \
                                          ContactOrganization, Organization
 from django.utils.translation import get_language, ugettext, \
                                      ugettext_lazy as _
-from multishop.listeners import postprocess_order
+from multishop.listeners import postprocess_order, cancel_order, \
+                                remove_orders_on_cart_change, \
+                                status_changed_order, \
+                                postprocess_order_item_add
 from rulez import registry
 import datetime
 
@@ -162,7 +165,20 @@ Order.add_to_class('multishop_order', models.ForeignKey("self",
 
 
 """Perform custom actions when an Order has been created successfully."""
-signals.order_success.connect(postprocess_order, sender=None)
+# signals.order_success.connect(postprocess_order, sender=None)
+
+"""Perform custom actions when an Item has been copied over to an Order."""
+signals.satchmo_post_copy_item_to_order.connect(postprocess_order_item_add,
+	sender=None)
+
+"""Perform custom actions when an Order has been cancelled."""
+signals.order_cancelled.connect(cancel_order, sender=None)
+
+"""Perform custom actions when a Cart has been changed."""
+signals.satchmo_cart_changed.connect(remove_orders_on_cart_change, sender=None)
+
+"""Perform custom actions when a Order's status has been changed."""
+signals.satchmo_order_status_changed.connect(status_changed_order, sender=None)
 
 
 

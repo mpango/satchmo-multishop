@@ -12,13 +12,60 @@ def postprocess_order(sender, order=None, **kwargs):
 	in it accordingly into multiple related Orders, each containing all the
 	items of one distinct "real" shop.
 	"""
-	print "Initial Order created: %s"%order
-	if order.belongs_to_multishop():
-		order_item_groups = get_order_item_groups_from_order(order)
-		for site, order_item_group in order_item_groups.iteritems():
-			new_order = create_copied_order_with_item_group_for_site(
-				order, order_item_group, site)
-			print "Created a copied order: %s"%new_order
+	pass
+	# print "Initial Order created: %s"%order
+	# if order.belongs_to_multishop():
+	# 	order_item_groups = get_order_item_groups_from_order(order)
+	# 	for site, order_item_group in order_item_groups.iteritems():
+	# 		new_order = create_copied_order_with_item_group_for_site(
+	# 			order, order_item_group, site)
+	# 		print "Created a copied order: %s"%new_order
+
+
+def postprocess_order_item_add(cart=None, cartitem=None, order=None, orderitem=None, **kwargs):
+	"""docstring for postprocess_order_item_add"""
+	print "adding orderitem: %s to order: %s"%(orderitem, order)
+	if order.is_multishoporder:
+		site = orderitem.product.site
+		
+		# See if we already have a related order for this multishop order.
+		# If we don't, create a new one.
+		try:
+			copied_order = Order.objects.get(multishop_order=order,
+			                                 site=site)
+		except Order.DoesNotExist:
+			copied_order = copy_order_for_site(order, site)
+			copied_order.save()
+		
+		copy_orderitem_to_order(orderitem, copied_order)
+		# update_shipping_cost_for_order(new_order)
+		copied_order.recalculate_total()
+		copied_order.save()
+
+
+# entry point triggered from satchmo_store.shop.signals.order_cancelled
+def cancel_order(sender, order=None, **kwargs):
+	"""Invoked when an Order is cancelled."""
+	if order.is_multishoporder:
+		print "cancelling order %s"%order
+
+
+def remove_orders_on_cart_change(request=None, cart=None, **kwargs):
+	"""Satchmo already listens for this event and deletes any orders."""
+	pass
+
+
+def status_changed_order(sender, oldstatus="", newstatus="", order=None, **kwargs):
+	"""
+	Triggered by signals.satchmo_order_status_changed. If called with a
+	multishop Order, updates all it's child Order's statuses according to the
+	new Status.
+	"""
+	print "changed status of order %s"%order
+	if order.is_multishoporder:
+		for child_order in order.childorder_set.all():
+			child_order.status = newstatus
+			child_order.save()
 
 
 def update_shipping_cost_for_order(order):
@@ -40,6 +87,36 @@ def update_shipping_cost_for_order(order):
 	update_shipping(order, order.shipping_model, order.contact, dummy_cart)
 
 
+def copy_orderitem_to_order(order_item, new_order):
+	"""
+	Expects an OrderItem and an Order. Adds a copy of the given OrderItem to
+	the Order if the Order does not already have an OrderItem with the same
+	Product attached to it.
+	"""
+	# First, see if we haven't already added this OrderItem.
+	try:
+		new_order.orderitem_set.get(product=order_item.product)
+		# When #get doesn't raise an Exception, we already have an OrderItem
+		# with the same product, so we need to exit this method and not do
+		# anything else. Simply return.
+		return
+	except OrderItem.DoesNotExist:
+		pass # If it doesn't exist, proceed without doing anything.
+	
+	# Quickly get and cache the original OrderItemDetails.
+	old_order_item_details = list(order_item.orderitemdetail_set.all())
+	
+	# Set the OrderItem's PK to None, so it gets copied and then add it
+	# to our new Order.
+	order_item.pk = None
+	new_order.orderitem_set.add(order_item)
+	
+	# Re-add a copied version of the original (old) OrderItemDetails.
+	for new_order_item_detail in old_order_item_details:
+		new_order_item_detail.pk = None
+		order_item.orderitemdetail_set.add(new_order_item_detail)
+
+
 def create_copied_order_with_item_group_for_site(order, item_group, site):
 	"""
 	Expects an original order and a group of OrderItems (of that order).
@@ -47,22 +124,10 @@ def create_copied_order_with_item_group_for_site(order, item_group, site):
 	only containing the OrderItems of the group.
 	"""
 	new_order = copy_order_for_site(order, site)
-	new_order.status = 'New'
 	new_order.save()
 	
 	for order_item in item_group:
-		# Quickly get and cache the original OrderItemDetails.
-		old_order_item_details = list(order_item.orderitemdetail_set.all())
-		
-		# Set the OrderItem's PK to None, so it gets copied and then add it
-		# to our new Order.
-		order_item.pk = None
-		new_order.orderitem_set.add(order_item)
-		
-		# Re-add a copied version of the original (old) OrderItemDetails.
-		for new_order_item_detail in old_order_item_details:
-			new_order_item_detail.pk = None
-			order_item.orderitemdetail_set.add(new_order_item_detail)
+		copy_orderitem_to_order(order_item, new_order)
 	
 	# Recalculate the Order's prices and persist the updated values.
 	update_shipping_cost_for_order(new_order)
