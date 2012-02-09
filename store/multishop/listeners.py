@@ -127,5 +127,6 @@ def copy_order_for_site(order, site):
 		shipping_discount = Decimal('0.00'),
 		tax = order.tax,
 		time_stamp = order.time_stamp,
-		status = order.status)
+		status = order.status,
+		multishop_order = order)
 	return copied_order

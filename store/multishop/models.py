@@ -13,29 +13,36 @@ from satchmo_store.contact.models import ContactInteractionType, \
                                          ContactOrganizationRole, \
                                          ContactRole, Interaction, Contact, \
                                          ContactOrganization, Organization
-from django.utils.translation import get_language, ugettext, ugettext_lazy as _
+from django.utils.translation import get_language, ugettext, \
+                                     ugettext_lazy as _
 from multishop.listeners import postprocess_order
 from rulez import registry
 import datetime
 
 
+#
+# Tell Satchmo we're configuring a custom Product here (MultishopProduct).
+#
 SATCHMO_PRODUCT = True
 
 def get_product_types():
 	"""
-	Returns a tuple of all product subtypes this app adds
+	Returns a tuple of all product subtypes this app adds.
 	"""
 	return ('MultishopProduct', )
 
 
 class MultishopProduct(models.Model):
-	product = models.OneToOneField(Product, verbose_name=_('Product'), primary_key=True)
-	virtual_sites = models.ManyToManyField(Site, blank=True, verbose_name=_("Virtual Sites"))
-	# site = models.ForeignKey(Site, verbose_name=_('Site'))
-	# category = models.ManyToManyField(Category, blank=True, verbose_name=_("Category"))
-	# name = models.CharField(_("Full Name"), max_length=255, blank=False, help_text=_("This is what the product will be called in the default site language.  To add non-default translations, use the Product Translation section below."))
-	# slug = models.SlugField(_("Slug Name"), blank=True, help_text=_("Used for URLs, auto-generated from name if blank"), max_length=255)
-	# sku = models.CharField(_("SKU"), max_length=255, blank=True, null=True, help_text=_("Defaults to slug if left blank"))
+	"""
+	A MultishopProduct links the original products to Multishops. A Multishop
+	is the new shop class, that does not contain it's own products, but only
+	products from other, real shops. One Product can thus belong to multiple
+	Multishops. These shops are also referred to as 'virtual shops'.
+	"""
+	product = models.OneToOneField(Product, verbose_name=_('Product'),
+		primary_key=True)
+	virtual_sites = models.ManyToManyField(Site, blank=True,
+		verbose_name=_("Virtual Sites"))
 	
 	def __init__(self, *args, **kwargs):
 		super(MultishopProduct, self).__init__(*args, **kwargs)
@@ -48,12 +55,6 @@ class MultishopProduct(models.Model):
 	
 	def __unicode__(self):
 		return u"MultishopProduct: %s" % self.product.name
-	
-	# def save(self, force_insert=False, force_update=False):
-	# 	self.name = self.product.name
-	# 	self.slug = self.product.slug
-	# 	self.sku  = self.product.sku
-	# 	super(MultishopProduct, self).save(force_insert=force_insert, force_update=force_update)
 	
 	class Meta:
 		verbose_name = _('Multishop Product')
@@ -135,10 +136,29 @@ respective site represents a normal shop (is_multishop = False) or a new
 Site.add_to_class('is_multishop', models.BooleanField(default=False))
 
 
+#
+# Order changes and additions.
+#
+
+
 def belongs_to_multishop(self):
 	"""Returns True when the order belongs to a multishop."""
 	return self.site.is_multishop
 Order.add_to_class('belongs_to_multishop', belongs_to_multishop)
+
+@property
+def is_multishoporder(self):
+	"""Property alias for belongs_to_multishop"""
+	return self.belongs_to_multishop()
+Order.add_to_class('is_multishoporder', is_multishoporder)
+
+"""
+Add a reference from normal orders to their parent multishoporder (if
+present).
+"""
+Order.add_to_class('multishop_order', models.ForeignKey("self",
+	verbose_name=_('Multishop Order'), blank=True, null=True,
+	related_name='childorder_set'))
 
 
 """Perform custom actions when an Order has been created successfully."""
@@ -155,7 +175,8 @@ This allows us to use site / shop specific behaviour for all aspects needed.
 #
 TaxClass.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
 
-AttributeOption.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
+AttributeOption.add_to_class('site', models.ForeignKey(Site, blank=True,
+	null=True))
 
 #
 #
@@ -165,16 +186,23 @@ TaxRate.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
 #
 # satchmo_store.contact
 #
-ContactInteractionType.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
+ContactInteractionType.add_to_class('site', models.ForeignKey(Site,
+	blank=True, null=True))
 
-ContactOrganizationRole.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
+ContactOrganizationRole.add_to_class('site', models.ForeignKey(Site,
+	blank=True, null=True))
 
-ContactRole.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
+ContactRole.add_to_class('site', models.ForeignKey(Site, blank=True,
+	null=True))
 
-Interaction.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
+Interaction.add_to_class('site', models.ForeignKey(Site, blank=True,
+	null=True))
 
 Contact.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
 
-Organization.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
+Organization.add_to_class('site', models.ForeignKey(Site, blank=True,
+	null=True))
 
-ContactOrganization.add_to_class('site', models.ForeignKey(Site, blank=True, null=True))
+ContactOrganization.add_to_class('site', models.ForeignKey(Site, blank=True,
+	null=True))
+

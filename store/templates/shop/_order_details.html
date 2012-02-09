@@ -6,13 +6,22 @@
 {% if default_view_tax %}{% load satchmo_tax %}{% endif %}
 
 <h4>{% trans "Items Ordered" %}</h4>
-{% for item in order.orderitem_set.all %}
-{% if default_view_tax %}
-{{ item }} - {{item.unit_price_with_tax|currency}} x {{item.quantity|normalize_decimal}}{% if item.discount %} - {{ item.discount|currency }}{% endif %} = {{item.total_with_tax|currency}}<br/>
+{% if order.is_multishoporder %}
+  {% for shop_order in multishop_order %}
+    <p>
+    <h5>Shop: {{ shop_order.site }}</h5>
+    {% for item in shop_order.orderitems %}
+      {% if default_view_tax %}
+        {{ item }} - {{item.unit_price_with_tax|currency}} x {{item.quantity|normalize_decimal}}{% if item.discount %} - {{ item.discount|currency }}{% endif %} = {{item.total_with_tax|currency}}<br/>
+      {% else %}
+        {{ item }} - {{item.unit_price|currency}} x {{item.quantity|normalize_decimal}}{% if item.discount %} - {{ item.discount|currency }}{% endif %} = {{item.sub_total|currency}}<br/>
+      {% endif %}
+    {% endfor %}
+    </p>
+  {% endfor %}
 {% else %}
-{{ item }} - {{item.unit_price|currency}} x {{item.quantity|normalize_decimal}}{% if item.discount %} - {{ item.discount|currency }}{% endif %} = {{item.sub_total|currency}}<br/>
+  !!! NORMALE ORDER FUNKTIONALITÄT WIEDERHERSTELLEN!!!
 {% endif %}
-{% endfor %}
 
 <h4>{% trans "Contact Information" %}</h4>
 {{ order.contact.full_name }}<br/>
